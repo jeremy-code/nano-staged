@@ -10,7 +10,7 @@ import { createGit } from '../../lib/git.js'
 let spawn = promisify(execFile)
 let currentDir = dirname(fileURLToPath(import.meta.url))
 let cwd = resolve(currentDir, `nano-staged-${nanoid()}`)
-let runners = ['lint-staged', 'nano-staged']
+let runners = ['lint-staged', 'nano-staged', 'prek', 'lefthook']
 let before
 
 async function makeDir(dir = cwd) {
@@ -30,6 +30,7 @@ async function initGitRepo() {
   await execGit(['init'])
   await execGit(['config', 'user.name', '"test"'])
   await execGit(['config', 'user.email', '"test@test.com"'])
+  await execGit(['config', 'commit.gpgsign', 'false'])
   await appendFile('README.md', '# Test\n')
   await appendFile('.gitignore', `node_modules/\n`)
   await execGit(['add', 'README.md'])
@@ -48,10 +49,34 @@ async function initProject() {
         "*.js": "prettier --write",
         "*.css": "prettier --write"
       }
-    }`
+    }`,
+  )
+
+  await appendFile(
+    'prek.toml',
+    `
+[[repos]]
+repo = "https://github.com/rbubley/mirrors-prettier"
+rev = "v3.8.3"
+hooks = [
+  { id = "prettier", types_or = ["css", "javascript"] },
+]`,
+  )
+
+  await appendFile(
+    'lefthook.yml',
+    `
+pre-commit:
+  commands:
+    prettier:
+      glob: "*.{js,css}"
+      run: node --run prettier --write {staged_files}
+`,
   )
 
   await spawn('pnpm', ['add', 'lint-staged'], { cwd })
+  await spawn('pnpm', ['add', 'lefthook'], { cwd })
+  await spawn('pnpm', ['add', '@j178/prek'], { cwd })
   await spawn('pnpm', ['add', resolve(cwd, '../../../../nano-staged')], {
     cwd,
   })
@@ -60,6 +85,24 @@ async function initProject() {
   await appendFile('c.js', 'var test = {};')
   await appendFile('d.js', 'var test = {};')
   await appendFile('e.js', 'var test = {};')
+  await appendFile(
+    'f.js',
+    `
+// Source - https://stackoverflow.com/a/75988895
+// Posted by Mr. Polywhirl, modified by community. See post 'Timeline' for change history
+// Retrieved 2026-05-27, License - CC BY-SA 4.0
+
+const debounce = (callback, wait) => {
+  let timeoutId = null
+  return (...args) => {
+    window.clearTimeout(timeoutId)
+    timeoutId = window.setTimeout(() => {
+      callback(...args)
+    }, wait)
+  }
+}
+`,
+  )
   await appendFile('a.css', 'body {color: red;}')
   await appendFile('b.css', 'body {color: red;}')
   await appendFile('c.css', 'body {color: red;}')
