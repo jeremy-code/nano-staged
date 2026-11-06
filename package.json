@@ -25,11 +25,13 @@
     "publish": "clean-publish --package-manager pnpm -- --no-git-checks"
   },
   "devDependencies": {
+    "@j178/prek": "^0.4.3",
     "c8": "^11.0.0",
     "clean-publish": "^6.0.5",
     "cross-env": "^10.1.0",
     "esmock": "^2.7.3",
     "fs-extra": "^11.3.4",
+    "lefthook": "^2.2.1",
     "nanoid": "^5.1.7",
     "prettier": "^3.8.1",
     "uvu": "^0.5.6"

@@ -10,7 +10,7 @@ import { createGit } from '../../lib/git.js'
 let spawn = promisify(execFile)
 let currentDir = dirname(fileURLToPath(import.meta.url))
 let cwd = resolve(currentDir, `nano-staged-${nanoid()}`)
-let runners = ['lint-staged', 'nano-staged']
+let runners = ['lint-staged', 'nano-staged', 'prek', 'lefthook']
 let before
 
 async function makeDir(dir = cwd) {
@@ -30,6 +30,7 @@ async function initGitRepo() {
   await execGit(['init'])
   await execGit(['config', 'user.name', '"test"'])
   await execGit(['config', 'user.email', '"test@test.com"'])
+  await execGit(['config', 'commit.gpgsign', 'false'])
   await appendFile('README.md', '# Test\n')
   await appendFile('.gitignore', `node_modules/\n`)
   await execGit(['add', 'README.md'])
@@ -48,10 +49,42 @@ async function initProject() {
         "*.js": "prettier --write",
         "*.css": "prettier --write"
       }
-    }`
+    }`,
+  )
+  await appendFile(
+    'pnpm-workspace.yaml',
+    `
+allowBuilds:
+  lefthook: true`,
+  )
+  await appendFile(
+    'prek.toml',
+    `
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "prettier"
+name = "prettier"
+language = "system"
+entry = "prettier --write"
+pass_filenames = true
+files = { glob = ["*.js", "*.css"] }`,
+  )
+  await appendFile(
+    'lefthook.yml',
+    `
+pre-commit:
+  commands:
+    prettier:
+      glob: "*.{js,css}"
+      run: node --run prettier --write {staged_files}
+`,
   )
 
   await spawn('pnpm', ['add', 'lint-staged'], { cwd })
+  await spawn('pnpm', ['add', 'lefthook'], { cwd })
+  await spawn('pnpm', ['add', '@j178/prek'], { cwd })
   await spawn('pnpm', ['add', resolve(cwd, '../../../../nano-staged')], {
     cwd,
   })
